@@ -9,10 +9,10 @@ This is a category that eases your every day job of parsing an API and getting i
 * Thread safe saving (if you're saving in the wrong thread, we'll tell you).
 * Diffing of changes, updated, inserted and deleted objects are automatically handled for you.
 DESC
-s.homepage         = "https://github.com/hyperoslo/Sync"
+s.homepage         = "https://github.com/nbarnold01/Sync"
 s.license          = 'MIT'
 s.author           = { "Hyper AS" => "iOS@hyper.no" }
-s.source           = { :git => "https://github.com/hyperoslo/Sync.git", :tag => s.version.to_s }
+s.source           = { :git => "https://github.com/nbarnold01/Sync.git", :tag => s.version.to_s }
 s.social_media_url = 'https://twitter.com/hyperoslo'
 
 s.platform     = :ios, '7.0'
