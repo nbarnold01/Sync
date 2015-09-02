@@ -7,19 +7,19 @@
 + (void)changes:(NSArray *)changes
   inEntityNamed:(NSString *)entityName
       dataStack:(DATAStack *)dataStack
-     completion:(void (^)(NSError *error))completion;
+     completion:(void (^)(NSError *error, NSArray *untouched))completion;
 
 + (void)changes:(NSArray *)changes
   inEntityNamed:(NSString *)entityName
       predicate:(NSPredicate *)predicate
       dataStack:(DATAStack *)dataStack
-     completion:(void (^)(NSError *error))completion;
+     completion:(void (^)(NSError *error, NSArray *untouched))completion;
 
 + (void)changes:(NSArray *)changes
   inEntityNamed:(NSString *)entityName
          parent:(NSManagedObject *)parent
       dataStack:(DATAStack *)dataStack
-     completion:(void (^)(NSError *error))completion;
+     completion:(void (^)(NSError *error, NSArray *untouched))completion;
 
 + (void)changes:(NSArray *)changes
   inEntityNamed:(NSString *)entityName
@@ -27,6 +27,6 @@
          parent:(NSManagedObject *)parent
       inContext:(NSManagedObjectContext *)context
       dataStack:(DATAStack *)dataStack
-     completion:(void (^)(NSError *error))completion;
+     completion:(void (^)(NSError *error, NSArray *untouched))completion;
 
 @end

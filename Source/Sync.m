@@ -15,7 +15,7 @@
 + (void)changes:(NSArray *)changes
   inEntityNamed:(NSString *)entityName
       dataStack:(DATAStack *)dataStack
-     completion:(void (^)(NSError *error))completion {
+     completion:(void (^)(NSError *error, NSArray *untouchedObjects))completion {
     [self changes:changes
     inEntityNamed:entityName
         predicate:nil
@@ -27,9 +27,9 @@
   inEntityNamed:(NSString *)entityName
       predicate:(NSPredicate *)predicate
       dataStack:(DATAStack *)dataStack
-     completion:(void (^)(NSError *error))completion {
+     completion:(void (^)(NSError *error, NSArray *untouchedObjects))completion {
     [dataStack performInNewBackgroundContext:^(NSManagedObjectContext *backgroundContext) {
-
+        
         [self changes:changes
         inEntityNamed:entityName
             predicate:predicate
@@ -44,14 +44,14 @@
   inEntityNamed:(NSString *)entityName
          parent:(NSManagedObject *)parent
       dataStack:(DATAStack *)dataStack
-     completion:(void (^)(NSError *error))completion {
+     completion:(void (^)(NSError *error, NSArray *untouchedObjects))completion {
     [dataStack performInNewBackgroundContext:^(NSManagedObjectContext *backgroundContext) {
-
+        
         NSError *error = nil;
         NSManagedObject *safeParent = [parent sync_copyInContext:backgroundContext
                                                            error:&error];
         NSPredicate *predicate = [NSPredicate predicateWithFormat:@"%K = %@", [parent.entity.name lowercaseString], safeParent];
-
+        
         [self changes:changes
         inEntityNamed:entityName
             predicate:predicate
@@ -68,16 +68,16 @@
          parent:(NSManagedObject *)parent
       inContext:(NSManagedObjectContext *)context
       dataStack:(DATAStack *)dataStack
-     completion:(void (^)(NSError *error))completion {
+     completion:(void (^)(NSError *error, NSArray *untouchedObjects))completion {
     NSEntityDescription *entity = [NSEntityDescription entityForName:entityName
                                               inManagedObjectContext:context];
-
+    
     NSString *localKey = [entity sync_localKey];
     NSParameterAssert(localKey);
-
+    
     NSString *remoteKey = [entity sync_remoteKey];
     NSParameterAssert(remoteKey);
-
+    
     BOOL shouldLookForParent = (!parent && !predicate);
     if (shouldLookForParent) {
         NSRelationshipDescription *parentEntity = [entity sync_parentEntity];
@@ -85,7 +85,10 @@
             predicate = [NSPredicate predicateWithFormat:@"%K = nil", parentEntity.name];
         }
     }
-
+    
+    
+    NSMutableArray *untouchedObjects = [NSMutableArray array];
+    
     [DATAFilter changes:changes
           inEntityNamed:entityName
                localKey:localKey
@@ -108,14 +111,16 @@
                                                                  andParent:parent
                                                                  dataStack:dataStack
                                                                      error:&error];
+               } untouched:^(NSManagedObject *untouchedObject) {
+                   [untouchedObjects addObject:untouchedObject];
                }];
-
+    
     NSError *error = nil;
     [context save:&error];
-
+    
     [dataStack persistWithCompletion:^{
         if (completion) {
-            completion(error);
+            completion(error, [untouchedObjects copy]);
         }
     }];
 }
