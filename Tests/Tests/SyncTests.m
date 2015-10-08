@@ -1,93 +1,12 @@
 @import XCTest;
 
-@import CoreData;
+#import "BaseTestCase.h"
 
-#import "Sync.h"
-#import "NSJSONSerialization+ANDYJSONFile.h"
-#import "DATAStack.h"
-#import "NSManagedObject+HYPPropertyMapper.h"
-
-@interface Tests : XCTestCase
+@interface SyncTests : BaseTestCase
 
 @end
 
-@implementation Tests
-
-#pragma mark - Helpers
-
-- (DATAStack *)dataStackWithModelName:(NSString *)modelName {
-    DATAStack *dataStack = [[DATAStack alloc] initWithModelName:modelName
-                                                         bundle:[NSBundle bundleForClass:[self class]]
-                                                      storeType:DATAStackSQLiteStoreType];
-
-    return dataStack;
-}
-
-- (id)objectsFromJSON:(NSString *)fileName {
-    NSBundle *bundle = [NSBundle bundleForClass:[self class]];
-    id objects = [NSJSONSerialization JSONObjectWithContentsOfFile:fileName inBundle:bundle];
-
-    return objects;
-}
-
-- (NSInteger)countForEntity:(NSString *)entity
-                  inContext:(NSManagedObjectContext *)context {
-    return [self countForEntity:entity
-                      predicate:nil
-                      inContext:context];
-}
-
-- (NSInteger)countForEntity:(NSString *)entity
-                  predicate:(NSPredicate *)predicate
-                  inContext:(NSManagedObjectContext *)context {
-    NSError *error = nil;
-    NSFetchRequest *fetch = [NSFetchRequest fetchRequestWithEntityName:entity];
-    fetch.predicate = predicate;
-    NSInteger count = [context countForFetchRequest:fetch error:&error];
-    if (error) NSLog(@"countError: %@", [error description]);
-
-    return count;
-}
-
-- (NSArray *)fetchEntity:(NSString *)entity
-               inContext:(NSManagedObjectContext *)context {
-    return [self fetchEntity:entity
-                   predicate:nil
-                   inContext:context];
-}
-
-- (NSArray *)fetchEntity:(NSString *)entity
-               predicate:(NSPredicate *)predicate
-               inContext:(NSManagedObjectContext *)context {
-    return [self fetchEntity:entity
-                   predicate:predicate
-             sortDescriptors:nil
-                   inContext:context];
-}
-
-- (NSArray *)fetchEntity:(NSString *)entity
-         sortDescriptors:(NSArray *)sortDescriptors
-               inContext:(NSManagedObjectContext *)context {
-    return [self fetchEntity:entity
-                   predicate:nil
-             sortDescriptors:sortDescriptors
-                   inContext:context];
-}
-
-- (NSArray *)fetchEntity:(NSString *)entity
-               predicate:(NSPredicate *)predicate
-         sortDescriptors:(NSArray *)sortDescriptors
-               inContext:(NSManagedObjectContext *)context {
-
-    NSFetchRequest *request = [[NSFetchRequest alloc] initWithEntityName:entity];
-    request.predicate = predicate;
-    request.sortDescriptors = sortDescriptors;
-    NSError *error = nil;
-    NSArray *objects = [context executeFetchRequest:request error:&error];
-    if (error) NSLog(@"fetchError: %@", error);
-
-    return objects;
-}
+@implementation SyncTests
 
 #pragma mark - Tests
 
@@ -347,11 +266,18 @@
        completion:nil];
 
     NSArray *array = [self fetchEntity:@"User"
+                       sortDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"remoteID" ascending:YES]]
                              inContext:dataStack.mainContext];
     XCTAssertEqual(array.count, 2);
 
+    NSManagedObject *user1 = array[0];
+    XCTAssertEqualObjects([user1 valueForKey:@"name"], old1[@"name"]);
+
+    NSManagedObject *user2 = array[1];
+    XCTAssertEqualObjects([user2 valueForKey:@"name"], old2[@"name"]);
+
     NSDictionary *updatedOld2 = @{@"id" : @2, @"name" : @"Updated Old 2", @"created_at" : @"2014-03-14T00:00:00+00:00"};
-    NSDictionary *new = @{@"id" : @3, @"name" : @"New 2", @"created_at" : @"2019-03-14T00:00:00+00:00"};
+    NSDictionary *new = @{@"id" : @3, @"name" : @"New 2", @"created_at" : @"2049-03-14T00:00:00+00:00"};
     NSArray *newObjects = @[updatedOld2, new];
 
     [Sync changes:newObjects
@@ -361,8 +287,18 @@
        completion:nil];
 
     NSArray *updatedArray = [self fetchEntity:@"User"
-                                    inContext:dataStack.mainContext];
+                       sortDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"remoteID" ascending:YES]]
+                             inContext:dataStack.mainContext];
     XCTAssertEqual(updatedArray.count, 3);
+
+    NSManagedObject *updatedUser1 = updatedArray[0];
+    XCTAssertEqualObjects([updatedUser1 valueForKey:@"name"], old1[@"name"]);
+
+    NSManagedObject *updatedUser2 = updatedArray[1];
+    XCTAssertEqualObjects([updatedUser2 valueForKey:@"name"], old2[@"name"]);
+
+    NSManagedObject *updatedUser3 = updatedArray[2];
+    XCTAssertEqualObjects([updatedUser3 valueForKey:@"name"], new[@"name"]);
 
     [dataStack drop];
 }
@@ -746,6 +682,19 @@
     NSManagedObject *model = [form valueForKey:@"model"];
     XCTAssertNotNil(element);
     XCTAssertNotNil(model);
+
+    [dataStack drop];
+}
+
+- (void)testStoryToSummarize {
+    NSDictionary *formDictionary = [self objectsFromJSON:@"story-summarize.json"];
+    DATAStack *dataStack = [self dataStackWithModelName:@"Social"];
+
+    [Sync changes:@[formDictionary]
+    inEntityNamed:@"Story"
+        predicate:[NSPredicate predicateWithFormat:@"remoteID == %@", @1]
+        dataStack:dataStack
+       completion:nil];
 
     [dataStack drop];
 }
